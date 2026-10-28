@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Agents in Production</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: one reading column on a concrete ground. The hook lifecycle is a four-lane strip; incidents are set as numbered tickets (numbered because the talk walks them in order). */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --tag-bg: #16191a;
+  --tag-fg: #f8f9f7;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400; --tag-bg: #f0b400; --tag-fg: #151718;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400; --tag-bg: #f0b400; --tag-fg: #151718;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; padding: 0 0.25em; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.lede + p { margin: 1rem 0 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Lifecycle strip */
+.lifecycle-wrap { overflow-x: auto; margin-top: 1.25rem; }
+.lifecycle { display: grid; grid-template-columns: repeat(4, minmax(9.5rem, 1fr)); gap: 0; min-width: 38rem; border-top: 2px solid var(--ink); }
+.phase { padding: 0.85rem 0.85rem 1rem 0; }
+.phase + .phase { padding-left: 0.85rem; border-left: 1px dashed var(--rule); }
+.phase .ev { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.05em; color: var(--muted); display: block; }
+.phase h3 { font-size: 1rem; margin: 0.15rem 0 0.5rem; }
+.phase ul { margin: 0; padding-left: 1rem; font-size: 0.9rem; line-height: 1.45; }
+.phase li { margin-bottom: 0.35rem; }
+.caption { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* Incident tickets */
+.tickets { display: grid; gap: 1rem; margin-top: 1.25rem; counter-reset: inc; }
+.ticket {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1.1rem 1.25rem 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+  counter-increment: inc;
+}
+.ticket-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px dashed var(--rule);
+  padding-bottom: 0.5rem;
+}
+.ticket-head span:first-child::before { content: "Incident " counter(inc, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.ticket p { margin: 0; }
+.ticket b.lbl { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin-right: 0.35rem; }
+.ticket .proof { font-family: var(--f-mono); font-size: 0.85rem; border-left: 4px solid var(--stripe); padding-left: 0.75rem; }
+
+/* Lessons */
+.lessons { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.lesson { border-top: 1px solid var(--rule); padding-top: 0.9rem; }
+.lesson h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+.lesson p { margin: 0; }
+
+.repo { background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; padding: 1.1rem 1.25rem; margin-top: 1rem; }
+.repo h3 { font-family: var(--f-mono); font-weight: 600; font-size: 1.05rem; margin-bottom: 0.4rem; }
+.repo p { margin: 0 0 0.6rem; }
+.repo p:last-child { margin-bottom: 0; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Case study · AI coding agents · Live production</p>
+    <h1>Five AI agents. One live codebase. No quiet minutes.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">I'm the Principal Software Architect on a company's operations platform. It is in use every minute of the working day, by people in the office and people out in the field, and a minute of downtime gets felt somewhere. And most days, four or five Claude Code sessions are changing it at once. The agents are the rest of the team.</p>
+    <p>That sounds productive until you've lived it. Two sessions edit the same file and one quietly wins. A commit sweeps up a change nobody will claim. A session says "done" and leaves errors in the log that no one will ever read, because every other session assumes they belong to someone else. Every one of those mistakes lands on a system people are using right now. This is how I keep the agents from hurting it, or each other: every rule that matters is enforced by a hook, not written in a prompt.</p>
+    <p class="byline">Daniel Wimberley · Principal Software Architect</p>
+  </header>
+
+  <div class="gauges" role="list">
+    <div class="gauge" role="listitem"><b>4,000+</b><span>commits in a month</span></div>
+    <div class="gauge" role="listitem"><b>100s</b><span>of production deploys, all through a gate</span></div>
+    <div class="gauge" role="listitem"><b>12</b><span>hooks across 6 lifecycle events</span></div>
+    <div class="gauge" role="listitem"><b>34</b><span>sessions stopped from leaving work uncommitted</span></div>
+  </div>
+
+  <section>
+    <p class="thesis">Prompts are advice. <em>Hooks are law.</em></p>
+    <p>A session once committed to the shared history with a message that was a single character: an at sign. No description, no task number, nothing a person could ever trace. I wrote a rule into the agents' memory so it would never happen again. Weeks later, another commit with a message of just an at sign. The agent had read the rule. It had simply weighed it against everything else in its context, and the rule lost. That was the day a written rule stopped feeling like protection.</p>
+    <p>So every rule that protects production or another session's work became a Claude Code hook: a small script the harness runs at a fixed point in the agent's loop, which can refuse the action outright. The agent can't talk its way past it, and neither can I by accident.</p>
+
+    <div class="lifecycle-wrap">
+      <div class="lifecycle">
+        <div class="phase">
+          <span class="ev">UserPromptSubmit</span>
+          <h3>When I type</h3>
+          <ul><li>A bare "deploy" opens a one-hour deploy window for that session only</li></ul>
+        </div>
+        <div class="phase">
+          <span class="ev">PreToolUse</span>
+          <h3>Before any command runs</h3>
+          <ul>
+            <li>Commit guard: no broad adds, no amending another session's commit</li>
+            <li>Lint and static analysis on the files being committed</li>
+            <li>Production writes must count their rows first</li>
+            <li>Push and deploy need the open window</li>
+            <li>SSH only to a read-only key</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <span class="ev">PostToolUse</span>
+          <h3>After it runs</h3>
+          <ul>
+            <li>Edit ledger: which session wrote which file</li>
+            <li>Record this session's last commit</li>
+            <li>Knowledge-base checks</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <span class="ev">Stop</span>
+          <h3>Before the agent says "done"</h3>
+          <ul><li>Wrap-up guard: refuses to stop with its own files uncommitted or its error-log window unreviewed</li></ul>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Where each hook sits in the agent loop. A session start hook and a permission-request hook complete the twelve.</p>
+  </section>
+
+  <section>
+    <h2>Five incidents, five hooks</h2>
+    <p>Every one of these happened, and every one looked fine right up until it didn't. Each is now refused by a hook.</p>
+
+    <div class="tickets">
+      <article class="ticket">
+        <div class="ticket-head"><span>Git</span></div>
+        <h3>The amend that rewrote someone else's commit</h3>
+        <p><b class="lbl">What happened</b>A session noticed a typo in its commit message and amended. Routine. What it couldn't see: in the seconds between its commit and its amend, another session had committed. The amend didn't fix a message. It erased someone else's work, and nothing told either of them.</p>
+        <p><b class="lbl">The hook</b>After every commit, a hook records the commit this session just made. Before an amend, it checks that the current commit is still that one. If anyone has committed since, the amend is refused.</p>
+      </article>
+
+      <article class="ticket">
+        <div class="ticket-head"><span>Git → production</span></div>
+        <h3>The sweep that reached production</h3>
+        <p><b class="lbl">What happened</b><code>git add .</code> is the most natural command in the world. This one picked up another session's half-finished file, which shipped to production ahead of the database change it needed, and a screen people were using broke. The fix was quick. The hard part was the stretch before it: whose file is this, how did it get out, and what else went with it? Both sessions involved had read a doc warning against exactly this.</p>
+        <p><b class="lbl">The hook</b>Broad adds, <code>commit -a</code> and bare stashes are refused. A session names the paths it wrote, and an edit ledger tells it which uncommitted files are its own.</p>
+        <p class="proof">Extending this hook nearly opened a new hole: recording HEAD on <code>git add</code> would have let a session claim another's commit as its own and wave through their amend. It was caught in review before it shipped.</p>
+      </article>
+
+      <article class="ticket">
+        <div class="ticket-head"><span>Production data</span></div>
+        <h3>The filter that read correctly in English</h3>
+        <p><b class="lbl">What happened</b>You know the feeling: a write you trusted touched far more than you meant, and you don't yet know how far. Our orders table has a status column that sounds like "delivered or not" but is really an alive flag: it never holds "delivered". When code moved, a date bound was dropped, and a scheduled job used that column alone to pick its rows, so it rewrote a field on historical records it should never have touched. Then the repair script used the same filter, so the fix carried the same blast radius as the bug. Measured afterwards, it matched about 700 times the rows it was meant to.</p>
+        <p><b class="lbl">The hook</b>Any script that writes to production in bulk must run through a guard that counts the rows its filter matches, refuses if the count exceeds the declared ceiling, writes a rollback file, and runs in a transaction. A hook refuses to run a production write script that doesn't use it.</p>
+        <p class="proof">No SQL review reliably catches that filter, because it reads correctly. A row count before the write catches it in one second.</p>
+      </article>
+
+      <article class="ticket">
+        <div class="ticket-head"><span>Hooks themselves</span></div>
+        <h3>The guard that was off for every session</h3>
+        <p><b class="lbl">What happened</b>A guard with a syntax error isn't a broken guard. It's no guard at all, and nothing tells you. I edited the production-write hook in several small steps, and between two of them it briefly didn't parse. A crashed pre-command hook doesn't block, so for that moment every running session was unguarded and none of them knew. Earlier, its first version couldn't read Git Bash paths and allowed everything. Once fixed, it grepped the raw command and refused four ordinary commits in one afternoon. Each was forced through with the override.</p>
+        <p><b class="lbl">The rule</b>Hooks are production code. Build and test in a scratchpad, replace in one write. Parse the command instead of grepping it. Break every new check on purpose before trusting it.</p>
+        <p class="proof">Breaking checks on purpose earns its keep: a dependency-ordering check, deliberately broken, kept 14 of 15 tests green, because alphabetical order happened to match the right order.</p>
+      </article>
+
+      <article class="ticket">
+        <div class="ticket-head"><span>Deploys</span></div>
+        <h3>Deploys keyed to my literal words</h3>
+        <p><b class="lbl">What happened</b>The most dangerous command an agent can run is the right one, a little early. Permission rules couldn't express "only when I say so". An "ask" rule didn't prompt in auto mode, and a "deny" rule blocked real deploys too, so I ended up pasting deploy commands myself.</p>
+        <p><b class="lbl">The hook</b>Push and deploy unlock for one hour only after my whole message in that session is "deploy" (or "deploy #N"). The word inside a sentence doesn't count, and neither does a message relayed from another session.</p>
+        <p class="proof">About 28 refusals across 8 sessions, including a message that only mentioned "deploy" mid-sentence and a script that merely wrote the deploy command out as text.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>What I'd tell anyone doing this</h2>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>Choose fail-open or fail-closed on purpose, per check</h3>
+        <p>The production-write guard and the deploy gate fail closed. Lint on commit fails open when its tools are missing, and only judges the files being committed, never another session's work in progress. A gate a session has to fight teaches it to reach for the override.</p>
+      </div>
+      <div class="lesson">
+        <h3>Give each session a ledger of its own writes</h3>
+        <p>With five sessions in one tree, "what's uncommitted" is everyone's mess. A post-edit hook records which session wrote which file, so each session commits only its own work, and the stop hook holds it to that.</p>
+      </div>
+      <div class="lesson">
+        <h3>One folder, one address, per task</h3>
+        <p>Five sessions editing one folder break each other mid-edit: code that ran a second ago now fails, because another session is halfway through a file you never touched. More than two sessions in the main folder is now against the rules: every other task gets its own git worktree and its own local web address, like <code>task-123.wt.localhost</code>, served by a wildcard virtual host. One round of browser testing ran against the wrong code because a worktree's address was quietly answered by the main folder. Now each new worktree has to prove its address serves its own files before anyone uses it.</p>
+      </div>
+      <div class="lesson">
+        <h3>Put a byte budget on what agents load</h3>
+        <p>About 185 short docs record the system's traps. The part every session loads is held under 75 KB by a check in CI. It had crept to 101 KB before the check existed. Rules over budget move into the doc they belong to.</p>
+      </div>
+      <div class="lesson">
+        <h3>Give the agent narrow keys, not your keys</h3>
+        <p>Agents never use my keys. They get one key that can run a fixed set of read-only commands on the server. That key is how sessions confirm a deploy landed, without being able to change anything.</p>
+      </div>
+      <div class="lesson">
+        <h3>Mine your transcripts for friction</h3>
+        <p>A permission prompt you've clicked through a hundred times stops being a check. You approve the next one without reading it. I audited every prompt I had clicked through, and hundreds were for edits that were already allowed. A narrow permission hook now answers those, so the prompts that remain mean something. One routine went from 37 prompts over 43 minutes to 3 in about 7.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="built">
+    <h2>What this setup built</h2>
+    <p>These sessions closed every place a failure could go unseen, from saves that reported false success to failed queries that looked like empty results. <a href="../silent-failures/">Read that case study →</a></p>
+  </section>
+
+  <section id="code">
+    <h2>The code</h2>
+    <div class="repo">
+      <h3>claude-agent-ops</h3>
+      <p>The hooks described here (commit guard, deploy gate, production-write guard, SSH guard, edit ledger, wrap-up guard), the task board built for parallel sessions, the knowledge-base indexer with its byte budget, the pre-deploy check, and a CLAUDE.md template with per-machine profiles. Anonymized, MIT licensed, with a smoke-test suite.</p>
+      <p><a href="https://github.com/danielwimberley76/claude-agent-ops">github.com/danielwimberley76/claude-agent-ops</a></p>
+    </div>
+  </section>
+
+  <footer>
+    <p>I was hired to modernize this codebase and spent several years migrating it from procedural code to MVC. Then I took sole ownership of it, and could finally build the pipeline these hooks sit in. Figures are from the project's git history, session transcripts and docs. Company and staff names are withheld.</p>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daniel Wimberley</title>
+<meta name="description" content="Case studies and essays from a live production app: AI coding agents, silent failures, and bugs that looked correct.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>
+/* Layout: same concrete ground and lane stripe as the case studies; case-study cards, essay cards, then the code. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font-family: var(--f-body); font-size: 1.0625rem; line-height: 1.6; }
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 3.5rem 3rem;
+}
+h1 { font-family: var(--f-display); font-weight: 900; font-size: clamp(2.2rem, 6vw, 3.2rem); line-height: 1.05; margin: 0; }
+.lane { height: 6px; margin-block: 1.5rem; background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px); }
+.lede { font-size: 1.15rem; margin: 0 0 0.75rem; max-width: 40rem; }
+.contact { font-family: var(--f-display); font-weight: 600; margin: 0 0 2.5rem; }
+h2 { font-family: var(--f-mono); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+.cards { display: grid; gap: 1rem; margin-bottom: 2.5rem; }
+.card { display: block; background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; padding: 1.1rem 1.25rem; text-decoration: none; color: inherit; }
+.card:hover, .card:focus-visible { border-color: var(--ink); }
+.card h3 { font-family: var(--f-display); font-weight: 800; font-size: 1.25rem; line-height: 1.2; margin: 0 0 0.35rem; color: var(--ink); }
+.card p { margin: 0; color: var(--muted); }
+.card .go { display: inline-block; margin-top: 0.6rem; font-family: var(--f-display); font-weight: 600; color: var(--link); }
+ul.repos { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
+ul.repos li { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+ul.repos a { font-family: var(--f-mono); font-weight: 600; }
+ul.repos span { display: block; color: var(--muted); font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Daniel Wimberley</h1>
+  <div class="lane" aria-hidden="true"></div>
+  <p class="lede">Principal Software Architect. I modernize the operations platform an asphalt supply and logistics business runs on every minute of the day, with four or five AI coding agents changing it at once. These are the stories of what broke, what nearly did, and what keeps it standing.</p>
+  <p class="contact"><a href="https://www.linkedin.com/in/daniel-wimberley">LinkedIn →</a></p>
+
+  <h2>Case studies</h2>
+  <div class="cards">
+    <a class="card" href="agents-in-production/">
+      <h3>Five AI agents. One live codebase. No quiet minutes</h3>
+      <p>Concurrent Claude Code sessions on a system that can't take a bad minute: five incidents, and the hook each one became.</p>
+      <span class="go">Read it →</span>
+    </a>
+    <a class="card" href="silent-failures/">
+      <h3>To keep the page alive, I taught the database to lie</h3>
+      <p>One failed query used to blank the whole page. The fix kept pages alive, and quietly let code act on answers that weren't real. How it finally got worked out.</p>
+      <span class="go">Read it →</span>
+    </a>
+  </div>
+
+  <h2>Code</h2>
+  <ul class="repos">
+    <li><a href="https://github.com/danielwimberley76/claude-agent-ops">claude-agent-ops</a><span>Guardrails for running several Claude Code sessions on one production codebase, plus the Samsara integration pieces.</span></li>
+    <li><a href="https://github.com/danielwimberley76/quo-call-pop">quo-call-pop</a><span>Quo phone webhook to a live call screen-pop for any PHP app.</span></li>
+  </ul>
+</div>
+</body>
+</html>

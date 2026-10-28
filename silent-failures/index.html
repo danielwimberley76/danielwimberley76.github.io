@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Silent Failures, Made Loud</title>
+<meta name="description" content="How a live PHP app went from failed queries that looked like empty results to every failure having a witness.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Same system as the other case studies. The rebuild is a numbered timeline (the talk walks it in order); the one fatal that proved the alert is a mono log excerpt. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; padding: 0 0.25em; overflow-wrap: anywhere; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+p + .thesis { margin-top: 2.25rem; }
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Timeline */
+.timeline { list-style: none; margin: 1.25rem 0 0; padding: 0; counter-reset: step; border-left: 2px solid var(--ink); }
+.step { position: relative; padding: 0 0 1.75rem 1.4rem; counter-increment: step; }
+.step:last-child { padding-bottom: 0.25rem; }
+.step::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.45rem;
+  width: 12px;
+  height: 12px;
+  background: var(--stripe);
+  border: 2px solid var(--ink);
+}
+.step .when {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+}
+.step .when::before { content: counter(step, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.step h3 { margin: 0.15rem 0 0.5rem; }
+.step p { margin: 0 0 0.6rem; }
+.step p:last-child { margin-bottom: 0; }
+.step .silence { font-family: var(--f-display); font-size: 0.95rem; }
+.step .silence b { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin-right: 0.35rem; }
+
+/* Log excerpt */
+.log {
+  font-family: var(--f-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--stripe);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+.log div { white-space: nowrap; }
+.log time { color: var(--muted); margin-right: 0.75rem; }
+
+.proof { font-family: var(--f-mono); font-size: 0.85rem; border-left: 4px solid var(--stripe); padding-left: 0.75rem; }
+
+/* Lessons */
+.lessons { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.lesson { border-top: 1px solid var(--rule); padding-top: 0.9rem; }
+.lesson h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+.lesson p { margin: 0; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Case study · Observability · Legacy PHP in production</p>
+    <h1>To keep the page alive, I taught the database to lie.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">One failed query used to take down an entire page. So I had the database layer catch the error, log it, and hand back an empty array. Pages stayed up. It worked. Then I found out what else that empty array was doing.</p>
+    <p class="byline">Daniel Wimberley · Principal Software Architect</p>
+  </header>
+
+  <div class="gauges" role="list">
+    <div class="gauge" role="listitem"><b>3 s</b><span>from a production fatal to the alert email</span></div>
+    <div class="gauge" role="listitem"><b>0</b><span>failed web queries logged since reads started throwing</span></div>
+    <div class="gauge" role="listitem"><b>172</b><span>places a failure could hide, found by a scan</span></div>
+    <div class="gauge" role="listitem"><b>63%</b><span>of slow requests traced to one integration</span></div>
+  </div>
+
+  <section>
+    <h2>One bad query, one blank page</h2>
+    <p>When I started, errors were printed straight onto the screen for whoever happened to be looking, and nowhere else. Turning that off was right, and for a while it made things worse. A page is built from many queries, and in PHP an uncaught exception ends the whole request. One broken query anywhere, and the user got a blank white page: no message, no clue, and no log yet to say what had happened.</p>
+  </section>
+
+  <section>
+    <h2>The fix that worked</h2>
+    <p>So the database layer caught every query error, logged it, and returned an empty array. The caller got exactly the shape it expected. A broken panel came up empty while the rest of the page kept working, an endpoint still returned valid JSON the screen could render and report on, and the log said why. Pages stopped dying. It was a good trade, and for a long time it looked like the end of the story.</p>
+  </section>
+
+  <section>
+    <h2>The caveat</h2>
+    <p>An empty array also means "nothing found". And code doesn't only display what it reads. It acts on it. "No existing record" is a reason to insert one. "Nothing found" is a reason to skip a step. Once empty could also mean "failed", those branches were acting on an answer that wasn't real, and nobody was told. A blank panel is honest about being broken. A skipped write is not.</p>
+    <p>Then comes the question you don't want to answer: how many places? A scan found 172 where code acted on a read that might have failed. In a sample of twenty, eight would act on wrong data and four would silently skip a write. The crash you can see was never the scary part. The scary part is the record that never got written, behind a screen that said it was saved.</p>
+    <p class="thesis">Every failure needs <em>a witness</em>.</p>
+  </section>
+
+  <section>
+    <h2>How it got worked out</h2>
+    <p>Simply throwing again would have brought the blank pages back. So the throw had to come last, after everything that would catch it, record it and tell someone was already in place. That meant closing six silences, in order, each one a place where something could break and nobody would ever find out.</p>
+    <ol class="timeline">
+      <li class="step">
+        <span class="when">Writes</span>
+        <h3>Saves that said they worked</h3>
+        <p>Older screens reported success whether or not the write happened. Someone clicked Save, saw it confirm, and moved on from a change that was never stored. Every failed write now passes through one guard in the database layer, and the screens check it before they answer.</p>
+      </li>
+      <li class="step">
+        <span class="when">Background jobs</span>
+        <h3>Proving a job actually ran</h3>
+        <p>Cron output went nowhere. A job could die and stay dead until someone noticed the data it fed had gone stale. Each job now records a heartbeat after every phase, and an hourly check emails when one is late. Its first real catch was a broken every-minute job, flagged and fixed within the hour.</p>
+      </li>
+      <li class="step">
+        <span class="when">Browser</span>
+        <h3>Errors stop going to the user</h3>
+        <p>Error details reached only the person who hit them. Now they go to the log, on the web and in cron.</p>
+      </li>
+      <li class="step">
+        <span class="when">Alerting</span>
+        <h3>Every error emailed within a minute</h3>
+        <p>A job reads only what was added to the log since its last pass, groups repeats so one error doesn't become a hundred emails, and keeps its state outside the database, because the day the database is down is the day you need that email most.</p>
+      </li>
+      <li class="step">
+        <span class="when">Outside view</span>
+        <h3>Watching from outside, and timing everything</h3>
+        <p>A one-word health check for an outside uptime monitor, and a log line for any request over 5 seconds. The slow-request log pointed straight at one integration as the next performance target.</p>
+      </li>
+      <li class="step">
+        <span class="when">Reads</span>
+        <h3>A failed query is no longer "no rows"</h3>
+        <p>Finally, in the modern endpoints a failed query throws. One boundary catches it and still answers with a well-formed response, so the page survives, but it now says "Something went wrong (ref 1a2b3c4d)" instead of "nothing found". That ref leads straight to the failing SQL in the log, and SQL never reaches the user. The page stays alive, and it no longer lies.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>The alert's first real catch</h2>
+    <p>A cleanup removed a method a search said nobody called. Every check said the deletion was safe. An old report did call it, with different capitals, and PHP method names are case-insensitive. The next time someone opened that report:</p>
+    <div class="log" role="figure" aria-label="Production timeline">
+      <div><time>+0 s</time>fatal error: call to undefined method</div>
+      <div><time>+3 s</time>alert email sent</div>
+      <div><time>+6 min</time>fix committed</div>
+    </div>
+    <p>Before the alert, that user would have seen a white page until they gave up and told someone.</p>
+  </section>
+
+
+  <section>
+    <h2>What I'd tell anyone doing this</h2>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>An empty result is a claim, not a fact</h3>
+        <p>If "failed" and "nothing found" look the same, every caller is guessing which one it got.</p>
+      </div>
+      <div class="lesson">
+        <h3>The alerter must not depend on what it watches</h3>
+        <p>If the database is down, that is exactly the email you need.</p>
+      </div>
+      <div class="lesson">
+        <h3>Measure before you make failures loud, and prove each guard by breaking it</h3>
+        <p>Count what a stricter rule would surface before switching it on. A guard that has never fired hasn't been tested.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="more">
+    <h2>More from the same codebase</h2>
+    <p>The same codebase is built by several AI coding agents working at once behind a set of hooks (<a href="../agents-in-production/">case study</a>).</p>
+  </section>
+
+  <footer>
+    <p>Figures are from the production error log, cron heartbeat records and the project's history. Company, customer and staff names are withheld.</p>
+  </footer>
+</div>
+</body>
+</html>
