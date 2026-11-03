@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Fabricut Online Ordering</title>
+<meta name="description" content="How a six-brand fabric company went from a static website to real-time online ordering on its IBM iSeries in under a year.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="From a static website to online ordering in under a year">
+<meta property="og:description" content="Six fabric brands, one shared backend, live stock and orders from an IBM iSeries, and a call center that went from thousands of order calls a day to a few hundred.">
+<meta property="og:url" content="https://danielwimberley76.github.io/fabricut/">
+<meta property="og:image" content="https://danielwimberley76.github.io/fabricut/og.jpg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="752">
+<meta property="og:image:alt" content="Fabric swatches, an open sample book and fabric bolts spread across a designer's worktable in soft window light.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Same system as the other case studies. Earlier work: the build is a numbered timeline, the reference letter is a pull quote. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+p + .thesis { margin-top: 2.25rem; }
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Timeline */
+.timeline { list-style: none; margin: 1.25rem 0 0; padding: 0; counter-reset: step; border-left: 2px solid var(--ink); }
+.step { position: relative; padding: 0 0 1.75rem 1.4rem; counter-increment: step; }
+.step:last-child { padding-bottom: 0.25rem; }
+.step::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.45rem;
+  width: 12px;
+  height: 12px;
+  background: var(--stripe);
+  border: 2px solid var(--ink);
+}
+.step .when {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+}
+.step .when::before { content: counter(step, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.step h3 { margin: 0.15rem 0 0.5rem; }
+.step p { margin: 0 0 0.6rem; }
+.step p:last-child { margin-bottom: 0; }
+
+/* Pull quote */
+figure.quote { margin: 0; background: var(--paper); border: 1px solid var(--rule); border-left: 4px solid var(--stripe); border-radius: 3px; padding: 1.25rem 1.25rem 1rem; }
+figure.quote blockquote { margin: 0 0 1rem; font-size: 1.05rem; }
+figure.quote blockquote p:last-child { margin-bottom: 0; }
+figure.quote figcaption { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); }
+figure.quote figcaption b { color: var(--ink); font-weight: 800; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Case study · Earlier work · 2008–2013</p>
+    <h1>From a static website to online ordering in under a year.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">Six brand websites on one shared backend, connected in real time to the company's IBM iSeries (AS400). It started with one plain conversation: <em>we need a way to sell our products online.</em></p>
+    <p class="byline">Daniel Wimberley · Senior Web Developer, Fabricut, Inc. · Tulsa, Oklahoma</p>
+  </header>
+
+  <figure class="hero-img">
+    <img src="og.jpg" width="1424" height="752" alt="Fabric swatches, an open sample book and fabric bolts spread across a designer's worktable in soft window light.">
+  </figure>
+
+  <div class="gauges" role="list">
+    <div class="gauge" role="listitem"><b>&lt; 1 yr</b><span>from the first conversation to ordering live on every brand</span></div>
+    <div class="gauge" role="listitem"><b>6</b><span>brand websites on one shared backend</span></div>
+    <div class="gauge" role="listitem"><b>165,000+</b><span>fabrics with managed imagery and classification</span></div>
+    <div class="gauge" role="listitem"><b>1000s → 100s</b><span>order calls a day to the call center</span></div>
+  </div>
+
+  <section>
+    <h2>The starting point</h2>
+    <p>Fabricut is a large, multi-brand fabric company. Each of its six brands, Fabricut, Trend, Stroheim, S. Harris, Vervain and Fabricut Contract, operated as its own company with its own products and ordering rules. When I arrived, the company had been trying to establish its websites for several years. What it had was static: customers couldn't see the products online, check stock or place an order. Nearly every order came through the call center, which handled thousands of order calls a day.</p>
+    <p>The project started with one plain conversation: <em>we need a way to sell our products online.</em></p>
+  </section>
+
+  <section>
+    <h2>How it got built</h2>
+    <ol class="timeline">
+      <li class="step">
+        <span class="when">Catalog</span>
+        <h3>The real problem was the catalog</h3>
+        <p>Selling fabric online means showing fabric online, and the company had no product imagery to show. So the first step wasn't code. Under my direction, we hired a photographer to shoot fabric swatches, hardware components and furniture. That effort kept growing until it became an entire department, eventually with its own building.</p>
+        <p>Photography at that scale created its own problem: thousands of raw images that needed to be cropped, resized, named consistently and published. I built a system to manage that pipeline, and a custom framework to manage imagery, classification and website visibility for more than 165,000 fabrics.</p>
+      </li>
+      <li class="step">
+        <span class="when">Integration</span>
+        <h3>Connecting the web to the iSeries</h3>
+        <p>The product, stock and order data lived on the company's IBM iSeries, not on anything the web could talk to directly. I built a custom PHP framework that integrated the websites with AS400 programs, physical files and logical views. That made real-time stock checks, order placement and wholesale account management possible from a browser.</p>
+      </li>
+      <li class="step">
+        <span class="when">Platform</span>
+        <h3>One backend, six brands</h3>
+        <p>Rather than build six separate systems, I built one shared backend that served every brand, with each brand's website carrying its own product rules and ordering requirements. Customers got a secure interface to browse products, check stock, place orders and check on them, under whichever brand they bought from.</p>
+      </li>
+      <li class="step">
+        <span class="when">Design tools</span>
+        <h3>The design board</h3>
+        <p>With the catalog online, I built a digital design board: a JavaScript tool modeled on the physical boards designers use to assemble fabrics, finishes and furniture for a project. Within a year, every one of our competitors was building their own.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>The results</h2>
+    <p><strong>Live in under a year</strong>, from the first "sell our products online" conversation to a rolled-out ordering system across all six brands.</p>
+    <p><strong>Call-center order volume fell from thousands of calls a day to a few hundred</strong>, as most customers moved to ordering online.</p>
+    <p><strong>A photography operation that became its own department</strong>, supplying imagery for more than 165,000 fabrics.</p>
+  </section>
+
+  <section>
+    <h2>In their words</h2>
+    <figure class="quote">
+      <blockquote>
+        <p>"When Daniel came to Fabricut, we had been trying to establish our web sites for several years. Daniel assessed our needs and quickly gained an understanding of how things worked. During his five years with us, he designed, created and maintained several web sites in a multi-brand environment. He took the lead himself, working both independently and under the guidance of our Marketing Department. We needed a site that would allow our customers to view fabrics, place and check on orders and check stock. Much of this information was stored on a non-PC system (IBM iSeries) and required the creation of a new interface. Daniel used existing knowledge as well as newly acquired skills to complete every task with speed and quality."</p>
+      </blockquote>
+      <figcaption><b>Ben Novak</b>, Vice President, Director of IT, Fabricut, Inc. (2013)</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Why it's here</h2>
+    <p>The tools have changed completely since then. The pattern hasn't.</p>
+    <p class="thesis">Start from a plain business conversation, find <em>the real problem</em> underneath it, and build the system that changes how the company works.</p>
+    <p>It's the same pattern I follow today at Asphalt &amp; Fuel Supply.</p>
+  </section>
+
+  <footer>
+    <p>Figures are from the project as delivered, 2008–2013. The quote is from a 2013 letter of recommendation.</p>
+    <p><a href="../">← All case studies</a></p>
+  </footer>
+</div>
+</body>
+</html>
