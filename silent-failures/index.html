@@ -3,9 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+</style>
 <title>Silent Failures, Made Loud</title>
 <meta name="description" content="How a live PHP app went from failed queries that looked like empty results to every failure having a witness.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="To keep the page alive, I taught the database to lie">
+<meta property="og:description" content="One failed query used to take down a whole page, so I made the database layer hand back an empty array instead. Pages stayed up. Then I found out what else that empty array was doing, and how it finally got fixed.">
+<meta property="og:url" content="https://danielwimberley76.github.io/silent-failures/">
+<meta property="og:image" content="https://danielwimberley76.github.io/silent-failures/og.jpg">
+<meta property="og:image:width" content="1376">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="A cheerful database robot holds out an empty tray marked [ ] while its hidden hand covers a flashing red QUERY FAILED alarm.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
@@ -207,6 +220,10 @@ footer p { margin: 0 0 0.5rem; }
     <p class="byline">Daniel Wimberley · Principal Software Architect</p>
   </header>
 
+  <figure class="hero-img">
+    <img src="og.jpg" width="1376" height="720" alt="A cheerful database robot holds out an empty tray marked [ ] while its hidden hand covers a flashing red QUERY FAILED alarm.">
+  </figure>
+
   <div class="gauges" role="list">
     <div class="gauge" role="listitem"><b>3 s</b><span>from a production fatal to the alert email</span></div>
     <div class="gauge" role="listitem"><b>0</b><span>failed web queries logged since reads started throwing</span></div>
@@ -305,6 +322,7 @@ footer p { margin: 0 0 0.5rem; }
 
   <footer>
     <p>Figures are from the production error log, cron heartbeat records and the project's history. Company, customer and staff names are withheld.</p>
+    <p><a href="../">← All case studies</a></p>
   </footer>
 </div>
 </body>

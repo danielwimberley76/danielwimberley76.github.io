@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+</style>
+<title>Agent Memory Budget</title>
+<meta name="description" content="How a 75 KB budget, generated doc indexes and a decision log nobody loads keep AI coding agents' context small and findable.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The more I told my agents, the less they heard">
+<meta property="og:description" content="My AI coding agents were loading 101 KB of instructions before reading a single line of the task, and still missing the one doc that had the answer. How I cut it to a 75 KB budget that a check enforces.">
+<meta property="og:url" content="https://danielwimberley76.github.io/agent-memory/">
+<meta property="og:image" content="https://danielwimberley76.github.io/agent-memory/og.jpg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="752">
+<meta property="og:image:alt" content="An AI agent buried under stacks of paper at a desk next to an overflowing filing cabinet labeled MEMORY, while four other agents wait in line.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Same system as the other case studies: numbered list for the walk-through, lesson rows for the takeaways. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; padding: 0 0.25em; overflow-wrap: anywhere; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Timeline */
+.timeline { list-style: none; margin: 1.25rem 0 0; padding: 0; counter-reset: step; border-left: 2px solid var(--ink); }
+.step { position: relative; padding: 0 0 1.75rem 1.4rem; counter-increment: step; }
+.step:last-child { padding-bottom: 0.25rem; }
+.step::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.45rem;
+  width: 12px;
+  height: 12px;
+  background: var(--stripe);
+  border: 2px solid var(--ink);
+}
+.step .when {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+}
+.step .when::before { content: counter(step, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.step h3 { margin: 0.15rem 0 0.5rem; }
+.step p { margin: 0 0 0.6rem; }
+.step p:last-child { margin-bottom: 0; }
+.step .silence { font-family: var(--f-display); font-size: 0.95rem; }
+.step .silence b { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin-right: 0.35rem; }
+
+/* Log excerpt */
+.log {
+  font-family: var(--f-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--stripe);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+.log div { white-space: nowrap; }
+.log time { color: var(--muted); margin-right: 0.75rem; }
+
+.proof { font-family: var(--f-mono); font-size: 0.85rem; border-left: 4px solid var(--stripe); padding-left: 0.75rem; }
+
+/* Lessons */
+.lessons { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.timeline + p, .lessons + p { margin-top: 1.75rem; }
+.lesson { border-top: 1px solid var(--rule); padding-top: 0.9rem; }
+.lesson h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+.lesson p { margin: 0; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Case study · AI coding agents · Context engineering</p>
+    <h1>The more I told my agents, the less they heard.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">Every Claude Code session on my codebase starts by loading the same instructions. Every hard lesson wants to live there, and every one that does makes the rest a little easier to miss. At 101 KB, my agents were reading a history book before they read a single line of the task. This is how I cut it to a budget of 75 KB, and kept everything else findable.</p>
+    <p class="byline">Daniel Wimberley · Principal Software Architect</p>
+  </header>
+
+  <figure class="hero-img">
+    <img src="og.jpg" width="1424" height="752" alt="An AI agent buried under stacks of paper at a desk next to an overflowing filing cabinet labeled MEMORY, while four other agents wait in line.">
+  </figure>
+
+  <div class="gauges" role="list">
+    <div class="gauge" role="listitem"><b>101→66</b><span>KB loaded into every session, after one retirement pass</span></div>
+    <div class="gauge" role="listitem"><b>75 KB</b><span>budget, enforced by a check that fails the build</span></div>
+    <div class="gauge" role="listitem"><b>~185</b><span>docs, each one line in the index until it's needed</span></div>
+    <div class="gauge" role="listitem"><b>0</b><span>lines loaded by default from the ~560 KB decision log</span></div>
+  </div>
+
+  <section>
+    <h2>The doc that had the answer all along</h2>
+    <p>A session was sent to fix a problem in one corner of the system. It worked carefully: traced the failures, measured them, and spent a day and a half building an analysis. Then the doc turned up. Two confirmed production incidents and a better analysis of that exact problem, written down and sitting in the repo the whole time. Nothing listed it, so no session had ever seen it.</p>
+    <p>That's a particular kind of sinking feeling. The knowledge wasn't lost. It was invisible, which is worse, because you paid for it twice.</p>
+    <p>The obvious fix is to load more. That fails the other way.</p>
+  </section>
+
+  <section>
+    <p class="thesis">Everything you add to an agent's context <em>competes with everything else in it</em>.</p>
+    <p>An instruction file starts as a page of conventions. Then a session makes a mistake, and the fix is a new rule. Then another. Each rule is right, and each one is written while the mistake is fresh, with the full story of why. A year in, the file is a history book, and the rule that matters today is somewhere in the middle of it.</p>
+    <p>Agents don't skim the way people do. A rule they loaded is a rule they weigh against everything else they loaded, and the more there is, the more often an important one loses. I measured mine at 101 KB loaded into every session, before the session had read a single line of the task.</p>
+    <p>So there are two ways to lose what you know: never load it, or load so much of it that it drowns. I had managed both at once.</p>
+  </section>
+
+  <section>
+    <h2>Rules up front, reasons somewhere else</h2>
+    <p>The file every session loads now holds rules, stated as rules. The story behind each one, the incident and the measurements, lives in a long-form companion file under the same heading. An agent that wants to argue with a rule, or change it, follows the heading and reads why. An agent that just needs to follow it doesn't pay for the history.</p>
+    <p>A rule that a hook already enforces shrinks to one line and the hook's name. If the harness will refuse the action anyway, three paragraphs explaining why not to do it are just weight.</p>
+    <p>What differs by machine lives in a profile. My workstations can write and deploy; another machine only reads. Both load the same shared file, plus one profile chosen by a single untracked line. Profiles only add rules, never override them, because when two loaded files disagree nothing decides which one wins.</p>
+  </section>
+
+  <section>
+    <h2>Every doc writes its own index line</h2>
+    <p>Everything module-specific lives in its own doc, and agents read only the ones a task needs. That only works if they can find them. A doc that no index lists isn't found a bit later; it is never found. That's exactly how the day and a half was lost.</p>
+    <p>So each doc now carries a small header, and the index is generated from those headers. The header holds only what can't be worked out by opening the file:</p>
+    <ol class="timeline">
+      <li class="step">
+        <span class="when">When</span>
+        <h3>A read-before trigger, not a summary</h3>
+        <p>"Read before touching these files, these tables, this job." The most identifying names go first, because the index shortens long triggers and the front is the part that survives.</p>
+      </li>
+      <li class="step">
+        <span class="when">State</span>
+        <h3>What state the thing is in</h3>
+        <p>Built, designed but not built, live, retired. This was the field most often missing, and the most expensive to lack: an agent that reads a plan as though it were built makes confident, wrong changes.</p>
+      </li>
+      <li class="step">
+        <span class="when">Where</span>
+        <h3>Which index it belongs in</h3>
+        <p>Shared knowledge lands in the file every machine loads. Workstation-only process lands in the workstation profile. Finished work moves to an archive index that isn't loaded at all, with a one-word change to its header.</p>
+      </li>
+      <li class="step">
+        <span class="when">Traps</span>
+        <h3>The silent ones, right under the title</h3>
+        <p>Anything that is wrong silently rather than loudly goes in the first lines of the doc, even though the evidence is further down. A trap on line 400 is not seen by a reader who previewed the first 40 and acted.</p>
+      </li>
+    </ol>
+    <p>A check fails when a doc has no header or the index is stale. Another runs after every edit and checks that the files and tables a doc names still exist. That one caught three docs describing modules that had moved months earlier.</p>
+  </section>
+
+  <section>
+    <h2>The decision log nobody loads</h2>
+    <p>Some choices look like mistakes to anyone who wasn't there: a guard that seems redundant, a column that's deliberately left alone. Those reasons go in one long, append-only decision log, now over half a megabyte. No session loads it. Instead, the code itself carries a one-line breadcrumb at the spot that would raise the question, pointing to the entry that answers it. The log's own index, also generated, is how you find an entry by topic.</p>
+    <p>The reason is in front of you exactly when you're about to undo the thing, and costs nothing the rest of the time.</p>
+  </section>
+
+  <section>
+    <h2>Retiring rules is a job, not a mood</h2>
+    <p>The first cut went from 101 KB to 66 KB. Every rule went through the same three questions, and nothing was deleted until its content had a home:</p>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>Is it stale?</h3>
+        <p>It contradicts the current code or another doc. Delete it. Fifteen of my agents' memory notes were in this bucket, describing work that had long since shipped or been reversed.</p>
+      </div>
+      <div class="lesson">
+        <h3>Is it a duplicate?</h3>
+        <p>The same rule already lives in a doc, a skill or a hook. Delete the copy, keep the one with the most context.</p>
+      </div>
+      <div class="lesson">
+        <h3>Does it belong somewhere narrower?</h3>
+        <p>It's true, but only for one module. Move it into that module's doc, where it is read exactly when it applies.</p>
+      </div>
+    </div>
+    <p>Then the budget went into the check: a warning at 70 KB, a failure at 75. Within days of the cut it had crept back to the limit, and the check refused one more memory note until its index line was shortened. It fired again while this page was being rewritten: one new memory line about writing style pushed the total to 75.1 KB, and another session's production deploy stopped until that line moved into a file that loads only when it's needed. A minute of annoyance, and exactly the point. A budget that depends on someone noticing is not a budget. One that stops a deploy gets noticed.</p>
+  </section>
+
+  <section>
+    <h2>What I'd tell anyone doing this</h2>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>Measure what your agents load before they start</h3>
+        <p>Add up every file that loads automatically. If you have never looked, the number will surprise you.</p>
+      </div>
+      <div class="lesson">
+        <h3>Separate the rule from its story</h3>
+        <p>The rule is for every session. The story is for the session that wants to change the rule. Same heading, different file.</p>
+      </div>
+      <div class="lesson">
+        <h3>Generate the index, never maintain it</h3>
+        <p>A hand-kept index drifts from the docs it lists. Let each doc declare when to read it, and build the index from that.</p>
+      </div>
+      <div class="lesson">
+        <h3>Put the budget in a check</h3>
+        <p>Knowledge grows by default. Only a check that fails makes it shrink.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="more">
+    <h2>More from the same codebase</h2>
+    <p>The hooks these docs work alongside are their own case study (<a href="../agents-in-production/">five AI agents, one live codebase</a>). The index generator and doc checks are in <a href="https://github.com/danielwimberley76/claude-agent-ops">claude-agent-ops</a>.</p>
+  </section>
+
+  <footer>
+    <p>Figures are from the project's own knowledge base and its checks. Company, customer and staff names are withheld.</p>
+    <p><a href="../">← All case studies</a></p>
+  </footer>
+</div>
+</body>
+</html>

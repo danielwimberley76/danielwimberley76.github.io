@@ -3,8 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+</style>
 <title>Agents in Production</title>
+<meta property="og:type" content="article">
+<meta property="og:title" content="Five AI agents. One live codebase. No quiet minutes.">
+<meta property="og:description" content="How I run four or five Claude Code sessions at once on a production app people use all day, and the five incidents that turned my rules into hooks the agents can't talk their way past.">
+<meta property="og:url" content="https://danielwimberley76.github.io/agents-in-production/">
+<meta property="og:image" content="https://danielwimberley76.github.io/agents-in-production/og.jpg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="752">
+<meta property="og:image:alt" content="Five cartoon robots tangled in cables in front of code screens showing critical bug, syntax error, merge conflict and deployment failed.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
@@ -207,6 +220,10 @@ footer p { margin: 0 0 0.5rem; }
     <p class="byline">Daniel Wimberley · Principal Software Architect</p>
   </header>
 
+  <figure class="hero-img">
+    <img src="og.jpg" width="1424" height="752" alt="Five cartoon robots tangled in cables in front of code screens showing critical bug, syntax error, merge conflict and deployment failed.">
+  </figure>
+
   <div class="gauges" role="list">
     <div class="gauge" role="listitem"><b>4,000+</b><span>commits in a month</span></div>
     <div class="gauge" role="listitem"><b>100s</b><span>of production deploys, all through a gate</span></div>
@@ -319,7 +336,7 @@ footer p { margin: 0 0 0.5rem; }
       </div>
       <div class="lesson">
         <h3>Put a byte budget on what agents load</h3>
-        <p>About 185 short docs record the system's traps. The part every session loads is held under 75 KB by a check in CI. It had crept to 101 KB before the check existed. Rules over budget move into the doc they belong to.</p>
+        <p>About 185 short docs record the system's traps. The part every session loads is held under 75 KB by a check in CI. It had crept to 101 KB before the check existed. Rules over budget move into the doc they belong to. <a href="../agent-memory/">How the budget and the doc index work →</a></p>
       </div>
       <div class="lesson">
         <h3>Give the agent narrow keys, not your keys</h3>
@@ -348,6 +365,7 @@ footer p { margin: 0 0 0.5rem; }
 
   <footer>
     <p>I was hired to modernize this codebase and spent several years migrating it from procedural code to MVC. Then I took sole ownership of it, and could finally build the pipeline these hooks sit in. Figures are from the project's git history, session transcripts and docs. Company and staff names are withheld.</p>
+    <p><a href="../">← All case studies</a></p>
   </footer>
 </div>
 </body>
