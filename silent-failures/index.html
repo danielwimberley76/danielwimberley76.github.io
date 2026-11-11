@@ -7,6 +7,12 @@
 .hero-img { margin: 0 0 2.5rem; }
 .hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
 
+/* Top link home */
+.topnav { padding-top: 1.5rem; font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.06em; }
+.topnav a { color: var(--muted); text-decoration: none; }
+.topnav a:hover { color: var(--link); text-decoration: underline; }
+.topnav + header.hero { padding-top: 2rem; }
+
 </style>
 <title>Silent Failures, Made Loud</title>
 <meta name="description" content="How a live PHP app went from failed queries that looked like empty results to every failure having a witness.">
@@ -212,6 +218,7 @@ footer p { margin: 0 0 0.5rem; }
 <body>
 
 <div class="wrap">
+  <nav class="topnav" aria-label="Site"><a href="../">← All case studies</a></nav>
   <header class="hero">
     <p class="eyebrow">Case study · Observability · Legacy PHP in production</p>
     <h1>To keep the page alive, I taught the database to lie.</h1>

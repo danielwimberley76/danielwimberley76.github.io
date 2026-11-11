@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+/* Top link home */
+.topnav { padding-top: 1.5rem; font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.06em; }
+.topnav a { color: var(--muted); text-decoration: none; }
+.topnav a:hover { color: var(--link); text-decoration: underline; }
+.topnav + header.hero { padding-top: 2rem; }
+
+/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+</style>
+<title>One Codebase, Many Agents</title>
+<meta name="description" content="Why I run several AI coding agents on one codebase at all, and why that is so much harder than giving each agent its own project: the day one agent's unfinished change rode another agent's deploy to production.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="One deploy shipped. So did half of another feature.">
+<meta property="og:description" content="Work doesn't wait its turn, so a fix gets its own agent while a feature is still in progress. On one codebase, that means sharing everything, and one day an unfinished change rode another agent's deploy to production.">
+<meta property="og:url" content="https://danielwimberley76.github.io/why-parallel/">
+<meta property="og:image" content="https://danielwimberley76.github.io/why-parallel/og.jpg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="746">
+<meta property="og:image:alt" content="A blue robot hand lifts a finished cupcake out of a mixing bowl, and the red robot hand's half-mixed batter comes up with it, dripping off the cupcake with the whisk still in it.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Same system as the other case studies: numbered list for the walk-through, lesson rows for the takeaways. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; padding: 0 0.25em; overflow-wrap: anywhere; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Timeline */
+.timeline { list-style: none; margin: 1.25rem 0 0; padding: 0; counter-reset: step; border-left: 2px solid var(--ink); }
+.step { position: relative; padding: 0 0 1.75rem 1.4rem; counter-increment: step; }
+.step:last-child { padding-bottom: 0.25rem; }
+.step::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.45rem;
+  width: 12px;
+  height: 12px;
+  background: var(--stripe);
+  border: 2px solid var(--ink);
+}
+.step .when {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+}
+.step .when::before { content: counter(step, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.step h3 { margin: 0.15rem 0 0.5rem; }
+.step p { margin: 0 0 0.6rem; }
+.step p:last-child { margin-bottom: 0; }
+.step .silence { font-family: var(--f-display); font-size: 0.95rem; }
+.step .silence b { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin-right: 0.35rem; }
+
+/* Log excerpt */
+.log {
+  font-family: var(--f-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--stripe);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+.log div { white-space: nowrap; }
+.log time { color: var(--muted); margin-right: 0.75rem; }
+
+.proof { font-family: var(--f-mono); font-size: 0.85rem; border-left: 4px solid var(--stripe); padding-left: 0.75rem; }
+
+/* Lessons */
+.lessons { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.timeline + p, .lessons + p { margin-top: 1.75rem; }
+.lesson { border-top: 1px solid var(--rule); padding-top: 0.9rem; }
+.lesson h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+.lesson p { margin: 0; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="topnav" aria-label="Site"><a href="../">← All case studies</a></nav>
+  <header class="hero">
+    <p class="eyebrow">Essay · AI coding agents · One codebase</p>
+    <h1>One deploy shipped. So did half of another feature.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">I've written about how I run several Claude Code sessions on one codebase at once. I never explained why anyone would want to, or why doing it on one codebase is so much harder than giving each agent a project of its own. The work doesn't always wait its turn, and the apps aren't really separate. One day in production made that abundantly clear.</p>
+    <p class="byline">Daniel Wimberley · Principal Software Architect</p>
+  </header>
+
+  <figure class="hero-img">
+    <img src="og.jpg" width="1424" height="746" alt="A blue robot hand lifts a finished cupcake out of a mixing bowl, and the red robot hand's half-mixed batter comes up with it, dripping off the cupcake with the whisk still in it.">
+  </figure>
+
+  <section>
+    <h2>Why more than one agent at all</h2>
+    <p>I'm the sole architect on an operations platform that multiple companies use all day. Sales, orders, dispatch, rail cars, documents and accounting are separate screens to the people who use them, but underneath they're one system. They read the same order records, call the same shared code and run on the same database.</p>
+    <p>The work on a system like that never comes one item at a time. Say an agent is halfway through new features for the sales app, and they reach into code the sales app shares with everything else. Then a bug shows up that people are tripping over today, right now. It can't wait for the features to finish.</p>
+    <p>The low-tech answer is to put the bug fix in line: let the feature's agent wrap up, commit and push, then start the fix. But a fix almost always outranks a feature, so in practice the feature gets wrapped up half-built and goes dormant until the fix is in. Later, someone has to pick it back up and work out what was known, what wasn't, what was being done and what was going to happen next. The same thing happens to me when I'm pulled off a feature myself; agents just hit it more often. Do that a few times a day and the task line limits how much gets done.</p>
+    <p>So the fix gets its own agent, started while the feature's agent is still working. The same goes for features. A big piece of work, like the rail car screens below, comes in parts that can move side by side, and making each part wait for the last one stretches the line just the same. That's why I run agents in parallel, and running them on one codebase is where it gets hard.</p>
+  </section>
+
+  <section>
+    <p class="thesis">Two agents in two codebases can't hurt each other. Two agents in one codebase <em>share everything</em>.</p>
+    <p>Give each agent its own project and they're strangers. On one codebase, they share the same files, one working folder, one running copy of the app, one development database, one git history and one road to production. Every one of those is a place where one agent's work can land on top of another's, and neither of them will notice.</p>
+  </section>
+
+  <section>
+    <h2>The day it reached production</h2>
+    <p>The day it went wrong here, it wasn't a fix and a feature. It was two rail car features being built side by side. But the mechanics are the same either way. Swap the second session for an urgent fix and the story only gets worse: the fix ships, and half a feature ships with it.</p>
+    <ol class="timeline">
+      <li class="step">
+        <span class="when">Two sessions, one folder</span>
+        <h3>An unfinished change sat in a shared file</h3>
+        <p>One session was partway through a change to the shared code that loads an order. That code is used all over the app, including by the form for editing a rail car shipment, and the change was a new feature for that form. It depended on two new database columns that didn't exist yet. There was no release plan for any of it, because the feature was still being built. Its edit sat in the working folder, uncommitted, waiting for the rest of the work.</p>
+      </li>
+      <li class="step">
+        <span class="when">One commit</span>
+        <h3>Another session committed everything it saw</h3>
+        <p>A second session, building a completely different rail car feature, finished its task and committed with a command that takes every changed file in the folder. The first session's half-done edit went in with it, under the second session's message and task number. The second session had no way to tell that file wasn't its own.</p>
+      </li>
+      <li class="step">
+        <span class="when">One deploy</span>
+        <h3>Half a feature went to production</h3>
+        <p>The second session's work was ready, so it was deployed, and the unfinished edit rode along. What reached production was the wrong half. The new code for loading a rail car order now asked the database for the two new columns, but the columns didn't exist, and nothing else of the feature was there: no new fields on the form and no release plan. It was the one part of the feature that depended on every other part.</p>
+      </li>
+      <li class="step">
+        <span class="when">Until I read the log</span>
+        <h3>The rail car form stopped opening</h3>
+        <p>Every time the form tried to load an order, the query failed on the missing columns. Nobody was using the form yet, so the errors in the log were the only sign.</p>
+      </li>
+      <li class="step">
+        <span class="when">Minutes later</span>
+        <h3>Rolling back wasn't the quick way out</h3>
+        <p>The obvious move with a bad deploy is to put the old file back. But the swept-up file also held part of the second session's feature, the work that had gone out on purpose that morning, and that feature's new code depended on it. Putting the old file back would have taken the finished feature down to rescue the unfinished one. The two features were knotted together in one file, and there was no clean way to pull them apart in a hurry.</p>
+      </li>
+      <li class="step">
+        <span class="when">About half an hour</span>
+        <h3>So the feature shipped before it was ready</h3>
+        <p>That left rolling forward and putting out the rest of the feature properly, right then. A release plan got written on the spot, the two columns went into the production database, and the rest of the feature followed, about half an hour after the sweep was spotted. The form opened again.</p>
+        <p>I wasn't ready to roll it out. It still had a way to go, and the rest of the day went to finishing it in production instead of in development. That included a fix for part of the new screen that showed to everyone instead of only the users it was meant for.</p>
+      </li>
+    </ol>
+    <p>Each step was correct on its own: the edit was fine, the second session's work was ready, and the deploy shipped exactly what was committed. The broken form was the visible damage. The bigger cost was that someone else's deploy decided when my feature went live.</p>
+    <p>A rule against committing every changed file was already written down when it happened. It had already gone wrong once before, to a session that had read the rule. That's what convinced me that a warning in the instructions isn't enough when the mistake is one keystroke inside an otherwise normal habit.</p>
+  </section>
+
+  <section>
+    <h2>What makes it workable now</h2>
+    <p>What fixed it was making the collisions impossible, or at least loud.</p>
+    <p>A commit that takes every changed file is refused outright. A commit that includes lines another session wrote and hasn't committed yet is refused too, because a hook records what each session adds. Any task that changes app code gets its own folder on its own branch, so a feature in progress and an urgent fix never share a working copy, and if they touch the same lines it shows up as a merge conflict instead of lost work. And the deploy tool refuses to ship a file that also carries another task's unfinished change. It says what else would ship and stops, so a fix can't take half a feature to production with it.</p>
+    <p>The hooks that refuse a bad commit or an early deploy are <a href="../agents-in-production/">their own case study</a>.</p>
+  </section>
+
+  <section>
+    <h2>What I'd tell anyone doing this</h2>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>Run agents in parallel because work arrives out of order</h3>
+        <p>A fix that can't wait shouldn't force a feature to go dormant. That's the case for a second agent, not raw speed.</p>
+      </div>
+      <div class="lesson">
+        <h3>Separate apps aren't separate codebases</h3>
+        <p>If they share code, data or a deploy, an agent working on one can break another. Count what your agents share before you start a second one.</p>
+      </div>
+      <div class="lesson">
+        <h3>Uncommitted work isn't safe work</h3>
+        <p>In a shared folder, anything not committed belongs to whoever commits next. Give each task its own folder, and refuse commits that take what isn't yours.</p>
+      </div>
+      <div class="lesson">
+        <h3>Make the deploy check what it's carrying</h3>
+        <p>A deploy that ships whatever is in a file will one day ship someone else's half-finished change. Have it refuse a file that carries another task's work.</p>
+      </div>
+      <div class="lesson">
+        <h3>Turn rules into guards</h3>
+        <p>A rule the agents have read still fails in the moment. A hook that refuses the command doesn't.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="more">
+    <h2>More from the same codebase</h2>
+    <p>The hooks that refuse a bad commit or an early deploy: <a href="../agents-in-production/">five AI agents, one live codebase</a>. The tooling is in <a href="https://github.com/danielwimberley76/claude-agent-ops">claude-agent-ops</a>.</p>
+  </section>
+
+  <footer>
+    <p>The incident is from the project's own records. Company, customer and staff names are withheld.</p>
+    <p><a href="../">← All case studies</a></p>
+  </footer>
+</div>
+</body>
+</html>

@@ -7,6 +7,12 @@
 .hero-img { margin: 0 0 2.5rem; }
 .hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
 
+/* Top link home */
+.topnav { padding-top: 1.5rem; font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.06em; }
+.topnav a { color: var(--muted); text-decoration: none; }
+.topnav a:hover { color: var(--link); text-decoration: underline; }
+.topnav + header.hero { padding-top: 2rem; }
+
 </style>
 <title>Agents in Production</title>
 <meta property="og:type" content="article">
@@ -211,6 +217,7 @@ footer p { margin: 0 0 0.5rem; }
 <body>
 
 <div class="wrap">
+  <nav class="topnav" aria-label="Site"><a href="../">← All case studies</a></nav>
   <header class="hero">
     <p class="eyebrow">Case study · AI coding agents · Live production</p>
     <h1>Five AI agents. One live codebase. No quiet minutes.</h1>
@@ -352,6 +359,7 @@ footer p { margin: 0 0 0.5rem; }
   <section id="built">
     <h2>What this setup built</h2>
     <p>These sessions closed every place a failure could go unseen, from saves that reported false success to failed queries that looked like empty results. <a href="../silent-failures/">Read that case study →</a></p>
+    <p>Why run several agents on one codebase at all, and why it's harder than giving each its own project. <a href="../why-parallel/">Read that essay →</a></p>
   </section>
 
   <section id="code">
