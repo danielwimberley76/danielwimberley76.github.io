@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+/* Top link home */
+.topnav { padding-top: 1.5rem; font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.06em; }
+.topnav a { color: var(--muted); text-decoration: none; }
+.topnav a:hover { color: var(--link); text-decoration: underline; }
+.topnav + header.hero { padding-top: 2rem; }
+
+</style>
+<title>Bugs That Looked Correct</title>
+<meta name="description" content="Ten PHP and MySQL bugs from a live production app that read as right, passed review and tests, and waited.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ten bugs that looked correct">
+<meta property="og:description" content="Ten PHP and MySQL bugs from a live production app that read as right, passed review, passed tests, and waited for the one input, server or calendar day that made them true.">
+<meta property="og:url" content="https://danielwimberley76.github.io/looked-correct/">
+<meta property="og:image" content="https://danielwimberley76.github.io/looked-correct/og.jpg">
+<meta property="og:image:width" content="1376">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="A robot stamps APPROVED on a clean code printout while a tiny bug hides inside the code, unnoticed.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Same system as the other case studies: numbered list for the walk-through, lesson rows for the takeaways. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; padding: 0 0.25em; overflow-wrap: anywhere; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Timeline */
+.timeline { list-style: none; margin: 1.25rem 0 0; padding: 0; counter-reset: step; border-left: 2px solid var(--ink); }
+.step { position: relative; padding: 0 0 1.75rem 1.4rem; counter-increment: step; }
+.step:last-child { padding-bottom: 0.25rem; }
+.step::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.45rem;
+  width: 12px;
+  height: 12px;
+  background: var(--stripe);
+  border: 2px solid var(--ink);
+}
+.step .when {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+}
+.step .when::before { content: counter(step, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.step h3 { margin: 0.15rem 0 0.5rem; }
+.step p { margin: 0 0 0.6rem; }
+.step p:last-child { margin-bottom: 0; }
+.step .silence { font-family: var(--f-display); font-size: 0.95rem; }
+.step .silence b { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin-right: 0.35rem; }
+
+/* Log excerpt */
+.log {
+  font-family: var(--f-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--stripe);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+.log div { white-space: nowrap; }
+.log time { color: var(--muted); margin-right: 0.75rem; }
+
+.proof { font-family: var(--f-mono); font-size: 0.85rem; border-left: 4px solid var(--stripe); padding-left: 0.75rem; }
+
+/* Lessons */
+.lessons { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.timeline + p, .lessons + p { margin-top: 1.75rem; }
+.lesson { border-top: 1px solid var(--rule); padding-top: 0.9rem; }
+.lesson h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+.lesson p { margin: 0; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="topnav" aria-label="Site"><a href="../">← All case studies</a></nav>
+  <header class="hero">
+    <p class="eyebrow">War stories · PHP · MySQL</p>
+    <h1>Ten bugs that looked correct.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">A bug that looks wrong gets caught. The ones that cost me the most time read as right. They passed review, passed tests, and waited for the one input, the one server or the one calendar day that made them true. Every one of these is from a live PHP application. If you've written PHP for long, you've probably shipped at least one.</p>
+    <p class="byline">Daniel Wimberley · Principal Software Architect</p>
+  </header>
+
+  <figure class="hero-img">
+    <img src="og.jpg" width="1376" height="720" alt="A robot stamps APPROVED on a clean code printout while a tiny bug hides inside the code, unnoticed.">
+  </figure>
+
+  <section>
+    <p class="thesis">The scariest code is <em>code you'd approve</em>.</p>
+    <p>When a line looks wrong, you fix it. When it looks right, you defend it. You read it, it says exactly what it means, and you go looking somewhere else, sometimes for hours, while the bug sits in the one line you already cleared. Each of these has the line that looked fine, why it looked fine, and the fix.</p>
+    <ol class="timeline">
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3>The method nobody called</h3>
+        <p>A cleanup deleted three methods because a search found no callers. An old page called two of them, spelled with different capitals. PHP method names are case-insensitive, so the calls had always worked, and the search was case-sensitive, so it never saw them. The cleanup shipped, and the next person to open that page got a fatal error.</p>
+        <p class="silence"><b>Why it looked right</b>Zero search results is a very convincing number.</p>
+        <p class="silence"><b>The fix</b>Search for callers case-insensitively, and check for dynamic calls too.</p>
+      </li>
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3><code>??</code> lets an empty string through</h3>
+        <p>A date filter defaulted with <code>$start = $input['start'] ?? $default</code>. An empty form posts <code>''</code>, which isn't null, so the default never applied and MySQL got <code>''</code> as a datetime. It sat harmless for a long time, because the old query wrapped the column in <code>DATE()</code>, which tolerated it. Rewriting the filter to use an index exposed it at once.</p>
+        <p class="silence"><b>Why it looked right</b><code>??</code> reads as "use the default if there's no value". It means "if it's null".</p>
+        <p class="silence"><b>The fix</b>For user input, <code>?:</code>. The reverse holds when loading stored data, where <code>?:</code> turns a real <code>0</code> into the default.</p>
+      </li>
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3>The setting that was always off</h3>
+        <p>A value from <code>.env</code> read as <code>false</code> through <code>getenv()</code>, so the feature looked switched off. The file had loaded fine. The library's immutable loader fills <code>$_ENV</code> and <code>$_SERVER</code> but never calls <code>putenv()</code>, so <code>getenv()</code> can't see any of it.</p>
+        <p class="silence"><b>Why it looked right</b><code>getenv()</code> is the function literally named for the job.</p>
+        <p class="silence"><b>The fix</b>Read <code>$_ENV</code>, then <code>$_SERVER</code>.</p>
+      </li>
+      <li class="step">
+        <span class="when">MySQL</span>
+        <h3>The column that couldn't hold 100</h3>
+        <p>A <code>DECIMAL(6,4)</code> column used 100 as a special marker value. Its maximum is 99.9999, so every 100 was quietly stored as 99.9999, and not one row actually held the marker. Reports printed three decimals, which rounded it straight back to <code>100.000</code>, so anyone checking for the marker found it.</p>
+        <p class="silence"><b>Why it looked right</b>The report showed 100.</p>
+        <p class="silence"><b>The fix</b>Size the column for the full range, and print at the column's own scale.</p>
+      </li>
+      <li class="step">
+        <span class="when">Tests</span>
+        <h3>The suite that broke itself</h3>
+        <p>The whole test suite went red one morning with no code change. Nobody had touched anything, which is its own special kind of dread. A test passed <code>time()</code> into code with a seven-day cleanup window, while its fixtures had fixed dates. It passed every day until the calendar moved past the fixture date plus seven.</p>
+        <p class="silence"><b>Why it looked right</b>It had been green for as long as anyone remembered.</p>
+        <p class="silence"><b>The fix</b>Pin the clock in tests. When a test goes red with no code change, compare its fixture dates to today before anything else.</p>
+      </li>
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3>Clearing a variable emptied the query string</h3>
+        <p>A shared include bound a variable by reference to <code>$_GET</code>, so older pages could write through it. A newer page started with the ordinary line <code>$params = [];</code>, which, through the reference, emptied <code>$_GET</code> for everything below it. The URL in the address bar was correct the whole time.</p>
+        <p class="silence"><b>Why it looked right</b>It reads as initializing a local. The obvious place to debug was the code reading the parameters, the one place the bug wasn't.</p>
+        <p class="silence"><b>The fix</b>Read query parameters before that line, and treat any reference to a superglobal as a loaded weapon.</p>
+      </li>
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3>A typed zero became blank</h3>
+        <p>A shared validator kept a value only if it was truthy. <code>"0"</code> is falsy in PHP, so a typed zero came back as an empty string. On a form where blank meant "not entered" and zero meant "none", someone could type a careful, deliberate zero and have it recorded as never entered.</p>
+        <p class="silence"><b>Why it looked right</b><code>"0.00"</code> and <code>"0.5"</code> survive the check. Only the bare zero a person actually types is lost.</p>
+        <p class="silence"><b>The fix</b>For numbers, <code>is_numeric</code> plus a range check, never truthiness.</p>
+      </li>
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3>Slow SQL that wasn't</h3>
+        <p>A tab timed out after ten seconds, yet the same queries ran in under half a second from the command line. One stuck request was holding the PHP session file lock, so every later request from that browser queued behind it.</p>
+        <p class="silence"><b>Why it looked right</b>It looked exactly like a slow query, and time went into tuning queries that were fine.</p>
+        <p class="silence"><b>The fix</b>Retry in a fresh session first. If it's fast there, your queries are fine. Release the session early in long requests.</p>
+      </li>
+      <li class="step">
+        <span class="when">PHP</span>
+        <h3>6.4000000000000003552</h3>
+        <p><code>json_encode(round(6.4, 1))</code> printed <code>6.4</code> on development and <code>6.4000000000000003552…</code> in production. The servers had different <code>serialize_precision</code> settings, so no test ever saw it.</p>
+        <p class="silence"><b>Why it looked right</b><code>round()</code> looks like it settles the number.</p>
+        <p class="silence"><b>The fix</b>Send integers (milliseconds, cents) or formatted strings, and diff your production <code>php.ini</code> against development.</p>
+      </li>
+      <li class="step">
+        <span class="when">MySQL</span>
+        <h3>A NOT NULL column that IS NULL</h3>
+        <p>In a <code>NOT NULL</code> datetime column, the zero date <code>'0000-00-00 00:00:00'</code> matches <code>IS NULL</code>, a MySQL compatibility quirk. A queue's "not sent yet" check depended on it. Making the column nullable, the obvious cleanup that anyone would approve, would have silently stopped the queue, and the SQLite test database doesn't reproduce the behavior.</p>
+        <p class="silence"><b>Why it looked right</b>Asking a NOT NULL column whether it IS NULL looks like dead code.</p>
+        <p class="silence"><b>The fix</b>Know your sentinels, comment the line that depends on one, and test that predicate against real MySQL.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What they have in common</h2>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>The code said what the author meant</h3>
+        <p>Review checks that code says what you meant. It can't check that the language agrees.</p>
+      </div>
+      <div class="lesson">
+        <h3>Edge values are where meaning splits</h3>
+        <p>Empty string, zero, null, 100, the zero date. Test the boundary values your users actually type, not the ones that are easy to write down.</p>
+      </div>
+      <div class="lesson">
+        <h3>Development is not production</h3>
+        <p>Different <code>php.ini</code>, different database engine in tests, different clock. Half of these could only appear on the real thing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="more">
+    <h2>More from the same codebase</h2>
+    <p>How failures stopped hiding in the first place (<a href="../silent-failures/">silent failures</a>).</p>
+  </section>
+
+  <footer>
+    <p>Every bug here happened in a live production PHP application. Company, customer and staff names are withheld.</p>
+    <p><a href="../">← All case studies</a></p>
+  </footer>
+</div>
+</body>
+</html>
