@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}/* Hero photo */
+.hero-img { margin: 0 0 2.5rem; }
+.hero-img img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 3px; }
+
+/* Top link home */
+.topnav { padding-top: 1.5rem; font-family: var(--f-mono); font-size: 0.8rem; letter-spacing: 0.06em; }
+.topnav a { color: var(--muted); text-decoration: none; }
+.topnav a:hover { color: var(--link); text-decoration: underline; }
+.topnav + header.hero { padding-top: 2rem; }
+
+</style>
+<title>Proving Fixes</title>
+<meta name="description" content="Ten habits for proving a fix worked on production data when you cannot run a clean experiment.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="I proved the fix worked. I was wrong.">
+<meta property="og:description" content="The fix ships, the check comes back green, you close the ticket. Then it happens again. Ten checks I now run before I believe a fix worked, each one learned by believing something that wasn't true.">
+<meta property="og:url" content="https://danielwimberley76.github.io/proving-fixes/">
+<meta property="og:image" content="https://danielwimberley76.github.io/proving-fixes/og.jpg">
+<meta property="og:image:width" content="1376">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="Robots celebrate a FIXED banner beside a green test dashboard that is unplugged, while a bug climbs back out of the closed-tickets tray.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Same system as the other case studies: numbered list for the walk-through, lesson rows for the takeaways. */
+:root {
+  --ground: #eceeec;
+  --paper: #f8f9f7;
+  --ink: #16191a;
+  --muted: #586064;
+  --rule: #c6cbc9;
+  --stripe: #e4a400;
+  --link: #8a5300;
+  --f-display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "Overpass Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+    --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151718; --paper: #1d2021; --ink: #e8eae7; --muted: #a2a9ac;
+  --rule: #343a3c; --stripe: #f0b400; --link: #f0b400;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+a { color: var(--link); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--stripe); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; padding: 0 0.25em; overflow-wrap: anywhere; }
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header.hero { padding-block: 3.5rem 2rem; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 7vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lane {
+  height: 6px;
+  margin-block: 1.75rem;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 44px, transparent 44px 72px);
+}
+.lede { font-size: 1.2rem; margin: 0; max-width: 40rem; }
+.byline { font-family: var(--f-display); font-size: 0.95rem; color: var(--muted); margin-top: 1.25rem; }
+
+section { margin-block: 0 3.25rem; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+
+/* Gauges */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-block: 0 3rem;
+}
+.gauge { padding: 1rem 0.75rem 1rem 0; }
+.gauge + .gauge { padding-left: 0.75rem; border-left: 1px solid var(--rule); }
+.gauge b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge span { font-family: var(--f-display); font-size: 0.85rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 0.25rem; }
+
+/* Thesis */
+.thesis {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+.thesis em { font-style: normal; background: linear-gradient(transparent 62%, var(--stripe) 62%); }
+
+/* Timeline */
+.timeline { list-style: none; margin: 1.25rem 0 0; padding: 0; counter-reset: step; border-left: 2px solid var(--ink); }
+.step { position: relative; padding: 0 0 1.75rem 1.4rem; counter-increment: step; }
+.step:last-child { padding-bottom: 0.25rem; }
+.step::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.45rem;
+  width: 12px;
+  height: 12px;
+  background: var(--stripe);
+  border: 2px solid var(--ink);
+}
+.step .when {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+}
+.step .when::before { content: counter(step, decimal-leading-zero) " · "; color: var(--ink); font-weight: 600; }
+.step h3 { margin: 0.15rem 0 0.5rem; }
+.step p { margin: 0 0 0.6rem; }
+.step p:last-child { margin-bottom: 0; }
+.step .silence { font-family: var(--f-display); font-size: 0.95rem; }
+.step .silence b { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin-right: 0.35rem; }
+
+/* Log excerpt */
+.log {
+  font-family: var(--f-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--stripe);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+.log div { white-space: nowrap; }
+.log time { color: var(--muted); margin-right: 0.75rem; }
+
+.proof { font-family: var(--f-mono); font-size: 0.85rem; border-left: 4px solid var(--stripe); padding-left: 0.75rem; }
+
+/* Lessons */
+.lessons { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.timeline + p, .lessons + p { margin-top: 1.75rem; }
+.lesson { border-top: 1px solid var(--rule); padding-top: 0.9rem; }
+.lesson h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+.lesson p { margin: 0; }
+
+footer { border-top: 2px solid var(--ink); padding-block: 1.25rem 3rem; font-family: var(--f-display); font-size: 0.9rem; color: var(--muted); }
+footer p { margin: 0 0 0.5rem; }
+
+@media (max-width: 560px) {
+  header.hero { padding-block: 2.25rem 1.5rem; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge:nth-child(3) { padding-left: 0; border-left: 0; }
+  .gauge:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="topnav" aria-label="Site"><a href="../">← All case studies</a></nav>
+  <header class="hero">
+    <p class="eyebrow">Essay · Verification · Production data</p>
+    <h1>I proved the fix worked. I was wrong.</h1>
+    <div class="lane" aria-hidden="true"></div>
+    <p class="lede">You know the moment. The fix ships, the check comes back green, you close the ticket and tell everyone it's handled. Then it happens again. In production you rarely get a clean experiment. You get one complaint, a log, and a table someone has already half repaired. These are the checks I now run before I believe a fix worked, each one learned by believing something that wasn't true.</p>
+    <p class="byline">Daniel Wimberley · Principal Software Architect</p>
+  </header>
+
+  <figure class="hero-img">
+    <img src="og.jpg" width="1376" height="720" alt="Robots celebrate a FIXED banner beside a green test dashboard that is unplugged, while a bug climbs back out of the closed-tickets tray.">
+  </figure>
+
+  <section>
+    <p class="thesis">A check that can't fail <em>isn't a check</em>.</p>
+    <p>Almost every mistake below has the same shape: a check that looked like evidence, but would have given the same answer whether the fix worked or not. The dangerous ones feel like proof. The habits are all ways of asking one question before trusting a result: what would this have shown if I were wrong?</p>
+  </section>
+
+  <section>
+    <h2>Ten habits</h2>
+    <ol class="timeline">
+      <li class="step">
+        <span class="when">Controls</span>
+        <h3>Prove the break landed before you trust a green run</h3>
+        <p>To show a new regression test could catch its bug, I reverted the fix and re-ran the suite. Green, every test. That seemed to say the new test was worthless. It wasn't. The revert was a text replace that matched nothing and still exited cleanly, so I had tested the fixed code twice.</p>
+        <p class="silence"><b>The check</b>Predict the failure before running: "with the fix reverted, this test fails on this assertion." Revert with a tool that errors when it doesn't match, and read the changed lines back first.</p>
+      </li>
+      <li class="step">
+        <span class="when">Validation</span>
+        <h3>Your one known failure is probably the one someone already fixed</h3>
+        <p>A detector for a dropped update matched the only known case, perfectly. But the field it keyed on had been filled in by the person who repaired that case. On a failure nobody had repaired, the field would be empty, and the detector would miss exactly what it existed to find.</p>
+        <p class="silence"><b>The check</b>For every field a check relies on, ask: was this written by the failure, or by the repair? Prefer a signal set upstream, which no repair can back-fill, and confirm it across the whole population, not one case.</p>
+      </li>
+      <li class="step">
+        <span class="when">Signals</span>
+        <h3>"Should drop to zero" must be something the fix can stop</h3>
+        <p>A fix changed which record wins a collision, and success was "this warning goes to zero." Weeks later the warning count had gone up. Every candidate still raised it before a winner was chosen, so the fix could never have silenced it. Checking who actually owned each record showed the fix had half worked, and the noise had been hiding a second bug.</p>
+        <p class="silence"><b>The check</b>Name the line of the fix that stops the signal. If you can't, measure the end state instead of the noise.</p>
+      </li>
+      <li class="step">
+        <span class="when">Silence</span>
+        <h3>A quiet log proves nothing when failures are swallowed on purpose</h3>
+        <p>A background snapshot was wrapped so it could never break the user's save, which also meant a clean log said nothing about whether it ran. Elsewhere, a cloud batch-delete returned success with the failures listed inside the response, and a check that only looked for an exception got the answer backwards.</p>
+        <p class="silence"><b>The check</b>Look for something positive: a row, a file, a downstream effect. Report it next to how often the feature was used, so zero can mean "broken" or "not used yet," not both. Read per-item results, not just whether the call threw.</p>
+      </li>
+      <li class="step">
+        <span class="when">Samples</span>
+        <h3>A wrong sample frame gives a confident, opposite answer</h3>
+        <p>Some of our data arrives by email: a vendor sends documents to a shared inbox, and a job reads each message and pulls the data out of it. When something about that vendor's emails changed, I wanted to compare messages from before the change with messages from after it. For the "before" sample, I took the newest messages from the folder where those emails are filed. But that folder was still receiving mail, so its newest messages were all from after the change. I had compared new against new, and the comparison said nothing had changed, which was exactly backwards. The giveaway was that every "historical" message had a recent date.</p>
+        <p class="silence"><b>The check</b>Name the container you sampled. Read the dates on a historical sample before you read its conclusion. A <code>LIMIT</code> on an exploratory query is a sample frame too; one hid an entire era from me.</p>
+      </li>
+      <li class="step">
+        <span class="when">Replays</span>
+        <h3>A replay has two clocks</h3>
+        <p>Replaying a past decision showed two records sharing a key, which looked like an ambiguous match. Dating the writes showed one record had been overwritten two seconds after the replayed moment, by that moment's own side effect. The replay was reading the incident's output and calling it corroboration.</p>
+        <p class="silence"><b>The check</b>Put each input's last-write time next to the moment you're replaying. Then say honestly what you ran: "as of T, against today's rows."</p>
+      </li>
+      <li class="step">
+        <span class="when">Fallbacks</span>
+        <h3>Test where the fallback and the truth disagree</h3>
+        <p>When a distance was missing, a lookup silently fell back to the lowest band of a distance-based table. Thousands of records sat at that value and looked wrong. They weren't: the real distance was short and landed in the same band. That raised a false alarm and hid a real bug, which only showed in a sliver of records, under half a percent, where the true band was different.</p>
+        <p class="silence"><b>The check</b>Don't ask "is this the fallback value?" Ask "what would the right value be?" Group by whatever the fallback depends on, and test the slice where the two diverge.</p>
+      </li>
+      <li class="step">
+        <span class="when">Baselines</span>
+        <h3>Query the complement</h3>
+        <p>A hand-entered note next to an incident looked like the workaround someone had used. One query over a long window found the same note on dozens of unrelated records. It was routine, and evidence of nothing. Likewise, a text classifier caught every known positive, and querying what else it matched found false positives like "burner" and "burned".</p>
+        <p class="silence"><b>The check</b>Count how often the pattern appears when there is no incident. Read every distinct value it matches. Treat 100% or 0% as a reason to look harder, not as proof.</p>
+      </li>
+      <li class="step">
+        <span class="when">Signatures</span>
+        <h3>Find the write signature, and make the control light up</h3>
+        <p>Was an old code path still in use? Its logging couldn't say. But the old code rounded timestamps to whole minutes and the new code didn't. Grouped by month, the old period showed rounded times on every record, and recent months on none. In another case, a column that "stopped working" had never had a writer in code at all: a screen filled it as a side effect, and the people using that screen had changed how they worked.</p>
+        <p class="silence"><b>The check</b>Look for an accidental fingerprint: formatting, rounding, a default. Then make sure the query lights up over a period when the old path was definitely in use, or a zero means nothing.</p>
+      </li>
+      <li class="step">
+        <span class="when">Experiments</span>
+        <h3>When you can't run an experiment, find one that already happened</h3>
+        <p>One site's geofence was redrawn and three weren't, and all four got the same code the same day. The redrawn site's false-stop rate fell from about half to about 6%, while the untouched sites got worse over the same weeks. That ruled out the code change as the cause, and showed the leftover problem was something redrawing couldn't fix.</p>
+        <p class="silence"><b>The check</b>Treat untouched units as a concurrent control. Ask how likely the "after" result would be under the old rate (here, about 1 in 5,000). Back it with a second, independent signal.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>The control run that wrote to production</h2>
+    <p>The most reliable way to prove a fix is to run the old code and watch it fail. But the old code still does everything it used to do, side effects included. A control run against old code once wrote a real file to a production storage bucket, because that is what the old code did. The careful step, the one meant to prove the system was safe, was the one that touched production. Bail out before anything with side effects, or point it somewhere harmless.</p>
+  </section>
+
+  <section>
+    <h2>The short version</h2>
+    <div class="lessons">
+      <div class="lesson">
+        <h3>Before you trust a result, ask what it would show if you were wrong</h3>
+        <p>If the answer is "the same thing," it isn't evidence yet.</p>
+      </div>
+      <div class="lesson">
+        <h3>Prefer a positive observation to an absence</h3>
+        <p>A row that exists beats a log that's quiet. Silence has too many explanations.</p>
+      </div>
+      <div class="lesson">
+        <h3>Check the population, not the example</h3>
+        <p>The case you know about is the one that got attention, and attention changes the data.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="more">
+    <h2>More from the same codebase</h2>
+    <p>These habits are behind the numbers in the other case studies, including the error-alerting rebuild (<a href="../silent-failures/">silent failures</a>).</p>
+  </section>
+
+  <footer>
+    <p>Every case is from a live production system. Company, customer and staff names are withheld.</p>
+    <p><a href="../">← All case studies</a></p>
+  </footer>
+</div>
+</body>
+</html>
